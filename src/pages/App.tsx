@@ -45,6 +45,8 @@ interface AppContextType {
   setTemplateAPIsImageGen: (t: TemplateAPI[]) => void;
   templateTools: TemplateTools[];
   setTemplateTools: (t: TemplateTools[]) => void;
+  defaultRenderMD: boolean;
+  setDefaultRenderMD: (b: boolean) => void;
 }
 
 interface AppChatStoreContextType {
@@ -88,6 +90,8 @@ import {
 
 import { useToast } from "@/hooks/use-toast";
 import { ModeToggle } from "@/components/ModeToggle";
+
+import Search from "@/components/Search";
 
 import Navbar from "@/components/navbar";
 
@@ -295,6 +299,14 @@ export function App() {
     );
     _setTemplateTools(templateTools);
   };
+  const [defaultRenderMD, _setDefaultRenderMD] = useState(
+    localStorage.getItem("defaultRenderMD") === "true"
+  );
+  const setDefaultRenderMD = (defaultRenderMD: boolean) => {
+    localStorage.setItem("defaultRenderMD", `${defaultRenderMD}`);
+    _setDefaultRenderMD(defaultRenderMD);
+  };
+
   console.log("[PERFORMANCE!] reading localStorage");
 
   return (
@@ -315,6 +327,8 @@ export function App() {
         setTemplateAPIsImageGen,
         templateTools,
         setTemplateTools,
+        defaultRenderMD,
+        setDefaultRenderMD,
       }}
     >
       <Sidebar>
@@ -352,7 +366,10 @@ export function App() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <ModeToggle />
+          <div className="flex items-start gap-2">
+            <ModeToggle />
+            <Search />
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">{Tr("DEL")}</Button>

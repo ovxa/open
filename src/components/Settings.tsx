@@ -1,7 +1,8 @@
 import { themeChange } from "theme-change";
 
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 import { useContext, useEffect, useState, Dispatch } from "react";
+import React from "react";
 import { clearTotalCost, getTotalCost } from "@/utils/totalCost";
 import { ChatStore, TemplateChatStore, TemplateTools } from "@/types/chatstore";
 import { models } from "@/types/models";
@@ -76,6 +77,8 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { NonOverflowScrollArea, ScrollArea } from "@/components/ui/scroll-area";
 import { AppChatStoreContext, AppContext } from "@/pages/App";
+import { toast } from "@/hooks/use-toast";
+import { title } from "process";
 
 const TTS_VOICES: string[] = [
   "alloy",
@@ -177,46 +180,70 @@ const SelectModel = (props: { help: string }) => {
   );
 };
 
-const LongInput = (props: {
-  field: "systemMessageContent" | "toolsString";
-  label: string;
-  help: string;
-}) => {
-  const { chatStore, setChatStore } = useContext(AppChatStoreContext);
-  return (
-    <div>
-      <Label htmlFor="name" className="text-right">
-        {props.label}{" "}
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <InfoIcon />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{props.label} Help</DialogTitle>
-            </DialogHeader>
-            {props.help}
-          </DialogContent>
-        </Dialog>
-      </Label>
+const LongInput = React.memo(
+  (props: {
+    field: "systemMessageContent" | "toolsString";
+    label: string;
+    help: string;
+  }) => {
+    const { chatStore, setChatStore } = useContext(AppChatStoreContext);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [localValue, setLocalValue] = useState(chatStore[props.field]);
 
-      <Textarea
-        className="h-24 w-full"
-        value={chatStore[props.field]}
-        onBlur={async (event: any) => {
-          chatStore[props.field] = event.target.value;
-          await setChatStore({ ...chatStore });
-          autoHeight(event.target);
-        }}
-        onKeyPress={(event: any) => {
-          autoHeight(event.target);
-        }}
-      />
-    </div>
-  );
-};
+    // Update height when value changes
+    useEffect(() => {
+      if (textareaRef.current) {
+        autoHeight(textareaRef.current);
+      }
+    }, [localValue]);
+
+    // Sync local value with chatStore when it changes externally
+    useEffect(() => {
+      setLocalValue(chatStore[props.field]);
+    }, [chatStore[props.field]]);
+
+    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setLocalValue(event.target.value);
+    };
+
+    const handleBlur = () => {
+      if (localValue !== chatStore[props.field]) {
+        chatStore[props.field] = localValue;
+        setChatStore({ ...chatStore });
+      }
+    };
+
+    return (
+      <div>
+        <Label htmlFor="name" className="text-right">
+          {props.label}{" "}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <InfoIcon />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{props.label} Help</DialogTitle>
+              </DialogHeader>
+              {props.help}
+            </DialogContent>
+          </Dialog>
+        </Label>
+
+        <Textarea
+          ref={textareaRef}
+          mockOnChange={false}
+          className="h-24 w-full"
+          value={localValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
+      </div>
+    );
+  }
+);
 
 const InputField = (props: {
   field:
@@ -446,6 +473,29 @@ const Number = (props: {
           setChatStore({ ...chatStore });
         }}
       />
+    </div>
+  );
+};
+
+const DefaultRenderMDCheckbox = () => {
+  const { defaultRenderMD, setDefaultRenderMD } = useContext(AppContext);
+  return (
+    <div className="flex items-center space-x-2">
+      <div className="flex items-center">
+        <Checkbox
+          id="defaultRenderMD-checkbox"
+          checked={defaultRenderMD}
+          onCheckedChange={(checked: boolean) => {
+            setDefaultRenderMD(checked);
+          }}
+        />
+      </div>
+      <label
+        htmlFor="defaultRenderMD-checkbox"
+        className="flex items-center gap-2 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+      >
+        Render Markdown by Default
+      </label>
     </div>
   );
 };
@@ -882,6 +932,7 @@ export default (props: {}) => {
                     help="开发者模式，开启后会显示更多选项及功能"
                     {...props}
                   />
+                  <DefaultRenderMDCheckbox />
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Language</Label>
@@ -910,7 +961,10 @@ export default (props: {}) => {
                           className="w-full"
                           onClick={() => {
                             navigator.clipboard.writeText(link);
-                            alert(tr(`Copied link:`, langCode) + `${link}`);
+                            toast({
+                              title: tr(`Copied link:`, langCode),
+                              description: `${link}`,
+                            });
                           }}
                         >
                           {Tr("Copy Setting Link")}

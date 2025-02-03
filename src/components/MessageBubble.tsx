@@ -1,5 +1,8 @@
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { LightBulbIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { useContext, useState, useMemo } from "react";
 import { ChatStoreMessage } from "@/types/chatstore";
 import { addTotalCost } from "@/utils/totalCost";
@@ -16,6 +19,11 @@ import {
 } from "@/components/ui/chat/chat-bubble";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardIcon,
@@ -24,8 +32,10 @@ import {
   MessageSquarePlusIcon,
   AudioLinesIcon,
   LoaderCircleIcon,
+  ChevronsUpDownIcon,
 } from "lucide-react";
 import { AppChatStoreContext, AppContext } from "@/pages/App";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 interface HideMessageProps {
   chat: ChatStoreMessage;
@@ -240,7 +250,8 @@ export default function Message(props: { messageIndex: number }) {
 
   const chat = chatStore.history[messageIndex];
   const [showEdit, setShowEdit] = useState(false);
-  const [renderMarkdown, setRenderWorkdown] = useState(false);
+  const { defaultRenderMD } = useContext(AppContext);
+  const [renderMarkdown, setRenderWorkdown] = useState(defaultRenderMD);
   const [renderColor, setRenderColor] = useState(false);
 
   const { toast } = useToast();
@@ -283,75 +294,193 @@ export default function Message(props: { messageIndex: number }) {
             </span>
           </div>
         )}
-      <ChatBubble
-        variant={chat.role === "assistant" ? "received" : "sent"}
-        className={chat.role !== "assistant" ? "flex-row-reverse" : ""}
-      >
-        <ChatBubbleMessage isLoading={false}>
-          {chat.hide ? (
-            <MessageHide chat={chat} />
-          ) : typeof chat.content !== "string" ? (
-            <MessageDetail chat={chat} renderMarkdown={renderMarkdown} />
-          ) : chat.tool_calls ? (
-            <MessageToolCall chat={chat} copyToClipboard={copyToClipboard} />
-          ) : chat.role === "tool" ? (
-            <MessageToolResp chat={chat} copyToClipboard={copyToClipboard} />
-          ) : renderMarkdown ? (
-            <Markdown>{getMessageText(chat)}</Markdown>
-          ) : (
-            <div className="message-content">
-              {chat.content &&
-                (chat.logprobs && renderColor
-                  ? chat.logprobs.content
-                      .filter((c) => c.token)
-                      .map((c) => (
-                        <div
-                          style={{
-                            backgroundColor: logprobToColor(c.logprob),
-                            display: "inline",
-                          }}
-                        >
-                          {c.token}
-                        </div>
-                      ))
-                  : getMessageText(chat))}
-            </div>
-          )}
-        </ChatBubbleMessage>
-        <ChatBubbleActionWrapper>
-          <ChatBubbleAction
-            icon={
-              chat.hide ? (
-                <MessageSquarePlusIcon className="size-4" />
-              ) : (
-                <MessageSquareOffIcon className="size-4" />
-              )
-            }
-            onClick={() => {
-              chatStore.history[messageIndex].hide =
-                !chatStore.history[messageIndex].hide;
-              chatStore.totalTokens = 0;
-              for (const i of chatStore.history
-                .filter(({ hide }) => !hide)
-                .slice(chatStore.postBeginIndex)
-                .map(({ token }) => token)) {
-                chatStore.totalTokens += i;
+      {chat.role === "assistant" ? (
+        <div className="border-b border-border dark:border-border-dark pb-4">
+          {chat.reasoning_content ? (
+            <Collapsible className="mb-3 w-[450px]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-gray-500">
+                    {chat.response_model_name}
+                  </h4>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <LightBulbIcon className="h-3 w-3 text-gray-500" />
+                      <span className="sr-only">Toggle</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              <CollapsibleContent className="ml-5 text-gray-500">
+                {chat.reasoning_content}
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
+          <div>
+            {chat.hide ? (
+              <MessageHide chat={chat} />
+            ) : typeof chat.content !== "string" ? (
+              <MessageDetail chat={chat} renderMarkdown={renderMarkdown} />
+            ) : chat.tool_calls ? (
+              <MessageToolCall chat={chat} copyToClipboard={copyToClipboard} />
+            ) : renderMarkdown ? (
+              <div className="message-content max-w-full md:max-w-[75%]">
+                <Markdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  //break={true}
+                  components={{
+                    code: ({ children }) => (
+                      <code className="bg-muted px-1 py-0.5 rounded">
+                        {children}
+                      </code>
+                    ),
+                    pre: ({ children }) => (
+                      <pre className="bg-muted p-4 rounded-lg overflow-auto">
+                        {children}
+                      </pre>
+                    ),
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {getMessageText(chat)}
+                </Markdown>
+              </div>
+            ) : (
+              <div className="message-content max-w-full md:max-w-[75%]">
+                {chat.content &&
+                  (chat.logprobs && renderColor
+                    ? chat.logprobs.content
+                        .filter((c) => c.token)
+                        .map((c) => (
+                          <div
+                            style={{
+                              backgroundColor: logprobToColor(c.logprob),
+                              display: "inline",
+                            }}
+                          >
+                            {c.token}
+                          </div>
+                        ))
+                    : getMessageText(chat))}
+              </div>
+            )}
+          </div>
+          <div className="flex md:opacity-0 hover:opacity-100 transition-opacity">
+            <ChatBubbleAction
+              icon={
+                chat.hide ? (
+                  <MessageSquarePlusIcon className="size-4" />
+                ) : (
+                  <MessageSquareOffIcon className="size-4" />
+                )
               }
-              setChatStore({ ...chatStore });
-            }}
-          />
-          <ChatBubbleAction
-            icon={<PencilIcon className="size-4" />}
-            onClick={() => setShowEdit(true)}
-          />
-          <ChatBubbleAction
-            icon={<ClipboardIcon className="size-4" />}
-            onClick={() => copyToClipboard(getMessageText(chat))}
-          />
-          {chatStore.tts_api && chatStore.tts_key && <TTSButton chat={chat} />}
-          <TTSPlay chat={chat} />
-        </ChatBubbleActionWrapper>
-      </ChatBubble>
+              onClick={() => {
+                chatStore.history[messageIndex].hide =
+                  !chatStore.history[messageIndex].hide;
+                chatStore.totalTokens = 0;
+                for (const i of chatStore.history
+                  .filter(({ hide }) => !hide)
+                  .slice(chatStore.postBeginIndex)
+                  .map(({ token }) => token)) {
+                  chatStore.totalTokens += i;
+                }
+                setChatStore({ ...chatStore });
+              }}
+            />
+            <ChatBubbleAction
+              icon={<PencilIcon className="size-4" />}
+              onClick={() => setShowEdit(true)}
+            />
+            <ChatBubbleAction
+              icon={<ClipboardIcon className="size-4" />}
+              onClick={() => copyToClipboard(getMessageText(chat))}
+            />
+            {chatStore.tts_api && chatStore.tts_key && (
+              <TTSButton chat={chat} />
+            )}
+            <TTSPlay chat={chat} />
+          </div>
+        </div>
+      ) : (
+        <ChatBubble variant="sent" className="flex-row-reverse">
+          <ChatBubbleMessage isLoading={false}>
+            {chat.hide ? (
+              <MessageHide chat={chat} />
+            ) : typeof chat.content !== "string" ? (
+              <MessageDetail chat={chat} renderMarkdown={renderMarkdown} />
+            ) : chat.tool_calls ? (
+              <MessageToolCall chat={chat} copyToClipboard={copyToClipboard} />
+            ) : chat.role === "tool" ? (
+              <MessageToolResp chat={chat} copyToClipboard={copyToClipboard} />
+            ) : renderMarkdown ? (
+              <Markdown>{getMessageText(chat)}</Markdown>
+            ) : (
+              <div className="message-content">
+                {chat.content &&
+                  (chat.logprobs && renderColor
+                    ? chat.logprobs.content
+                        .filter((c) => c.token)
+                        .map((c) => (
+                          <div
+                            style={{
+                              backgroundColor: logprobToColor(c.logprob),
+                              display: "inline",
+                            }}
+                          >
+                            {c.token}
+                          </div>
+                        ))
+                    : getMessageText(chat))}
+              </div>
+            )}
+          </ChatBubbleMessage>
+          <ChatBubbleActionWrapper>
+            <ChatBubbleAction
+              icon={
+                chat.hide ? (
+                  <MessageSquarePlusIcon className="size-4" />
+                ) : (
+                  <MessageSquareOffIcon className="size-4" />
+                )
+              }
+              onClick={() => {
+                chatStore.history[messageIndex].hide =
+                  !chatStore.history[messageIndex].hide;
+                chatStore.totalTokens = 0;
+                for (const i of chatStore.history
+                  .filter(({ hide }) => !hide)
+                  .slice(chatStore.postBeginIndex)
+                  .map(({ token }) => token)) {
+                  chatStore.totalTokens += i;
+                }
+                setChatStore({ ...chatStore });
+              }}
+            />
+            <ChatBubbleAction
+              icon={<PencilIcon className="size-4" />}
+              onClick={() => setShowEdit(true)}
+            />
+            <ChatBubbleAction
+              icon={<ClipboardIcon className="size-4" />}
+              onClick={() => copyToClipboard(getMessageText(chat))}
+            />
+            {chatStore.tts_api && chatStore.tts_key && (
+              <TTSButton chat={chat} />
+            )}
+            <TTSPlay chat={chat} />
+          </ChatBubbleActionWrapper>
+        </ChatBubble>
+      )}
       <EditMessage showEdit={showEdit} setShowEdit={setShowEdit} chat={chat} />
       {chatStore.develop_mode && (
         <div
