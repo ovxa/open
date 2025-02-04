@@ -1471,18 +1471,17 @@ export default (props: {}) => {
           </Accordion>
           <div className="pt-4 space-y-2">
             <p className="text-sm text-muted-foreground text-center">
-              chatgpt-api-web ChatStore {Tr("Version")}{" "}
-              {chatStore.chatgpt_api_web_version}
+              open
             </p>
             <p className="text-sm text-muted-foreground text-center">
               {Tr("Documents and source code are avaliable here")}:{" "}
               <a
                 className="underline hover:text-primary transition-colors"
-                href="https://github.com/heimoshuiyu/chatgpt-api-web"
+                href="https://github.com/ovxa/open"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                github.com/heimoshuiyu/chatgpt-api-web
+                github.com/ovxa/open
               </a>
             </p>
           </div>

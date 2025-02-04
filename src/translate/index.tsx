@@ -14,7 +14,7 @@ const LANG_OPTIONS: Record<string, LangOption> = {
     matches: ["en-US", "en"],
   },
   "zh-CN": {
-    name: "中文（简体）",
+    name: "中文",
     langMap: MAP_zh_CN,
     matches: ["zh-CN", "zh"],
   },

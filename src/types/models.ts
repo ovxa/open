@@ -11,6 +11,34 @@ const M = 1000 * 1000; // dollars per million tokens
 const K = 1000; // dollars per thousand tokens
 
 export const models: Record<string, Model> = {
+  "Latest": {
+    maxToken: 128000,
+    price: { prompt: 15 / M, cached_prompt: 7.5 / M, completion: 60 / M },
+  },
+  "Think": {
+    maxToken: 128000,
+    price: { prompt: 15 / M, cached_prompt: 7.5 / M, completion: 60 / M },
+  },
+  "ThinkQ+7": {
+    maxToken: 128000,
+    price: { prompt: 15 / M, cached_prompt: 7.5 / M, completion: 60 / M },
+  },
+  "ThinkQ+14": {
+    maxToken: 128000,
+    price: { prompt: 30 / M, cached_prompt: 15 / M, completion: 60 / M },
+  },
+  "ThinkCHaiku": {
+    maxToken: 128000,
+    price: { prompt: 30 / M, cached_prompt: 15 / M, completion: 60 / M },
+  },
+  "ThinkQMax": {
+    maxToken: 128000,
+    price: { prompt: 30 / M, cached_prompt: 15 / M, completion: 60 / M },
+  },
+  "ThinkCSonnet": {
+    maxToken: 128000,
+    price: { prompt: 30 / M, cached_prompt: 15 / M, completion: 60 / M },
+  },
   "gpt-4o": {
     maxToken: 128000,
     price: { prompt: 2.5 / M, cached_prompt: 1.25 / M, completion: 10 / M },
