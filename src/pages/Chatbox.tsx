@@ -587,7 +587,8 @@ export default function ChatBOX() {
               autoHeight(event.target);
             }}
             onKeyPress={(event: any) => {
-              if (event.ctrlKey && event.code === "Enter") {
+              if (event.code === "Enter" && !event.shiftKey) {
+                event.preventDefault();
                 send(event.target.value, true);
                 setInputMsg("");
                 event.target.value = "";
