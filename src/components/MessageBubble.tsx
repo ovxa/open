@@ -2,8 +2,15 @@ import { LightBulbIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Markdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeHighlight from "rehype-highlight";
 import "katex/dist/katex.min.css";
-import { useContext, useState, useMemo } from "react";
+import {
+  useContext,
+  useState,
+  useMemo,
+  useInsertionEffect,
+  useEffect,
+} from "react";
 import { ChatStoreMessage } from "@/types/chatstore";
 import { addTotalCost } from "@/utils/totalCost";
 
@@ -45,10 +52,12 @@ function MessageHide({ chat }: HideMessageProps) {
   return (
     <>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>{getMessageText(chat).split("\n")[0].slice(0, 28)} ...</span>
+        <span>{getMessageText(chat).trim().slice(0, 28)} ...</span>
       </div>
       <div className="flex mt-2 justify-center">
-        <Badge variant="destructive">Removed from context</Badge>
+        <Badge variant="destructive">
+          <Tr>Removed from context</Tr>
+        </Badge>
       </div>
     </>
   );
@@ -67,7 +76,7 @@ function MessageDetail({ chat, renderMarkdown }: MessageDetailProps) {
       {chat.content.map((mdt) =>
         mdt.type === "text" ? (
           chat.hide ? (
-            mdt.text?.split("\n")[0].slice(0, 16) + " ..."
+            mdt.text?.trim().slice(0, 16) + " ..."
           ) : renderMarkdown ? (
             <Markdown>{mdt.text}</Markdown>
           ) : (
@@ -254,12 +263,16 @@ export default function Message(props: { messageIndex: number }) {
   const [renderMarkdown, setRenderWorkdown] = useState(defaultRenderMD);
   const [renderColor, setRenderColor] = useState(false);
 
+  useEffect(() => {
+    setRenderWorkdown(defaultRenderMD);
+  }, [defaultRenderMD]);
+
   const { toast } = useToast();
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       toast({
-        description: Tr("Message copied to clipboard!"),
+        description: <Tr>Message copied to clipboard!</Tr>,
       });
     } catch (err) {
       const textArea = document.createElement("textarea");
@@ -269,11 +282,11 @@ export default function Message(props: { messageIndex: number }) {
       try {
         document.execCommand("copy");
         toast({
-          description: Tr("Message copied to clipboard!"),
+          description: <Tr>Message copied to clipboard!</Tr>,
         });
       } catch (err) {
         toast({
-          description: Tr("Failed to copy to clipboard"),
+          description: <Tr>Failed to copy to clipboard</Tr>,
         });
       }
       document.body.removeChild(textArea);
@@ -295,26 +308,28 @@ export default function Message(props: { messageIndex: number }) {
           </div>
         )}
       {chat.role === "assistant" ? (
-        <div className="border-b border-border dark:border-border-dark pb-4">
+        <div className="pb-4">
           {chat.reasoning_content ? (
-            <Collapsible className="mb-3 w-[450px]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-gray-500">
-                    {chat.response_model_name}
-                  </h4>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <LightBulbIcon className="h-3 w-3 text-gray-500" />
-                      <span className="sr-only">Toggle</span>
-                    </Button>
-                  </CollapsibleTrigger>
+            <Card className="bg-muted hover:bg-muted/80 mb-5 w-full">
+              <Collapsible>
+                <div className="flex items-center justify-between px-3 py-1">
+                  <div className="flex items-center">
+                    <h4 className="font-semibold text-sm">
+                      Think Content of {chat.response_model_name}
+                    </h4>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <LightBulbIcon className="h-3 w-3 text-gray-500" />
+                        <span className="sr-only">Toggle</span>
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
                 </div>
-              </div>
-              <CollapsibleContent className="ml-5 text-gray-500">
-                {chat.reasoning_content}
-              </CollapsibleContent>
-            </Collapsible>
+                <CollapsibleContent className="ml-5 text-gray-500 message-content p">
+                  {chat.reasoning_content.trim()}
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
           ) : null}
           <div>
             {chat.hide ? (
@@ -324,39 +339,37 @@ export default function Message(props: { messageIndex: number }) {
             ) : chat.tool_calls ? (
               <MessageToolCall chat={chat} copyToClipboard={copyToClipboard} />
             ) : renderMarkdown ? (
-              <div className="message-content max-w-full md:max-w-[75%]">
-                <Markdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  //break={true}
-                  components={{
-                    code: ({ children }) => (
-                      <code className="bg-muted px-1 py-0.5 rounded">
-                        {children}
-                      </code>
-                    ),
-                    pre: ({ children }) => (
-                      <pre className="bg-muted p-4 rounded-lg overflow-auto">
-                        {children}
-                      </pre>
-                    ),
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                >
-                  {getMessageText(chat)}
-                </Markdown>
-              </div>
+              <Markdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex, rehypeHighlight]}
+                disallowedElements={[
+                  "script",
+                  "iframe",
+                  "object",
+                  "embed",
+                  "hr",
+                ]}
+                // allowElement={(element) => {
+                //   return [
+                //     "p",
+                //     "em",
+                //     "strong",
+                //     "del",
+                //     "code",
+                //     "inlineCode",
+                //     "blockquote",
+                //     "ul",
+                //     "ol",
+                //     "li",
+                //     "pre",
+                //   ].includes(element.tagName);
+                // }}
+                className={"prose max-w-none md:max-w-[75%]"}
+              >
+                {getMessageText(chat)}
+              </Markdown>
             ) : (
-              <div className="message-content max-w-full md:max-w-[75%]">
+              <div className="message-content max-w-full md:max-w-[100%]">
                 {chat.content &&
                   (chat.logprobs && renderColor
                     ? chat.logprobs.content
@@ -374,6 +387,7 @@ export default function Message(props: { messageIndex: number }) {
                     : getMessageText(chat))}
               </div>
             )}
+            <TTSPlay chat={chat} />
           </div>
           <div className="flex md:opacity-0 hover:opacity-100 transition-opacity">
             <ChatBubbleAction
@@ -408,7 +422,6 @@ export default function Message(props: { messageIndex: number }) {
             {chatStore.tts_api && chatStore.tts_key && (
               <TTSButton chat={chat} />
             )}
-            <TTSPlay chat={chat} />
           </div>
         </div>
       ) : (
@@ -423,7 +436,18 @@ export default function Message(props: { messageIndex: number }) {
             ) : chat.role === "tool" ? (
               <MessageToolResp chat={chat} copyToClipboard={copyToClipboard} />
             ) : renderMarkdown ? (
-              <Markdown>{getMessageText(chat)}</Markdown>
+              <Markdown
+                components={{
+                  p: ({ children, node }: any) => {
+                    if (node?.parent?.type === "listItem") {
+                      return <>{children}</>;
+                    }
+                    return <p>{children}</p>;
+                  },
+                }}
+              >
+                {getMessageText(chat)}
+              </Markdown>
             ) : (
               <div className="message-content">
                 {chat.content &&
@@ -443,6 +467,7 @@ export default function Message(props: { messageIndex: number }) {
                     : getMessageText(chat))}
               </div>
             )}
+            <TTSPlay chat={chat} />
           </ChatBubbleMessage>
           <ChatBubbleActionWrapper>
             <ChatBubbleAction
@@ -477,7 +502,6 @@ export default function Message(props: { messageIndex: number }) {
             {chatStore.tts_api && chatStore.tts_key && (
               <TTSButton chat={chat} />
             )}
-            <TTSPlay chat={chat} />
           </ChatBubbleActionWrapper>
         </ChatBubble>
       )}
@@ -529,7 +553,9 @@ export default function Message(props: { messageIndex: number }) {
                   setChatStore({ ...chatStore });
                 }}
               />
-              <span className="text-sm font-medium">{Tr("example")}</span>
+              <span className="text-sm font-medium">
+                <Tr>example</Tr>
+              </span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -538,7 +564,9 @@ export default function Message(props: { messageIndex: number }) {
                 checked={renderMarkdown}
                 onChange={() => setRenderWorkdown(!renderMarkdown)}
               />
-              <span className="text-sm font-medium">{Tr("render")}</span>
+              <span className="text-sm font-medium">
+                <Tr>render</Tr>
+              </span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -547,7 +575,9 @@ export default function Message(props: { messageIndex: number }) {
                 checked={renderColor}
                 onChange={() => setRenderColor(!renderColor)}
               />
-              <span className="text-sm font-medium">{Tr("color")}</span>
+              <span className="text-sm font-medium">
+                <Tr>color</Tr>
+              </span>
             </label>
             {chat.response_model_name && (
               <>
