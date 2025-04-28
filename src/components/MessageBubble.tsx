@@ -315,7 +315,7 @@ export default function Message(props: { messageIndex: number }) {
                 <div className="flex items-center justify-between px-3 py-1">
                   <div className="flex items-center">
                     <h4 className="font-semibold text-sm">
-                      Think Content of {chat.response_model_name}
+                      Thoughts
                     </h4>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="sm">
