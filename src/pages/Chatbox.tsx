@@ -1,4 +1,4 @@
-import { useContext, useRef } from "react";
+import { useContext, useRef, useCallback } from "react";
 import { useEffect, useState } from "react";
 import { langCodeContext, tr, Tr } from "@/translate";
 import { addTotalCost } from "@/utils/totalCost";
@@ -504,43 +504,70 @@ export default function ChatBOX() {
   const userInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController>(new AbortController());
   const inputContainerRef = useRef<HTMLDivElement>(null);
+  const focusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrollTimeRef = useRef<number>(0);
 
-  // Handle mobile keyboard appearance
-  const handleInputFocus = () => {
-    // Delay to ensure keyboard has appeared
-    setTimeout(() => {
-      if (inputContainerRef.current) {
-        inputContainerRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "end"
-        });
-      }
-    }, 300);
-  };
+  // Consolidated scroll logic for input visibility
+  const scrollInputIntoView = useCallback(() => {
+    if (inputContainerRef.current) {
+      inputContainerRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+    }
+  }, []);
+
+  // Handle mobile keyboard appearance on focus
+  const handleInputFocus = useCallback(() => {
+    // Clear any existing timeout to prevent multiple queued scrolls
+    if (focusTimeoutRef.current) {
+      clearTimeout(focusTimeoutRef.current);
+    }
+
+    // Delay to ensure keyboard has appeared (reduced from 300ms to 250ms for better responsiveness)
+    focusTimeoutRef.current = setTimeout(() => {
+      scrollInputIntoView();
+      focusTimeoutRef.current = null;
+    }, 250);
+  }, [scrollInputIntoView]);
 
   // Listen to Visual Viewport changes for better mobile keyboard handling
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'visualViewport' in window) {
-      const handleViewportResize = () => {
-        // When keyboard appears on mobile, viewport height changes
-        // Ensure input stays visible
-        if (document.activeElement === userInputRef.current && inputContainerRef.current) {
-          requestAnimationFrame(() => {
-            inputContainerRef.current?.scrollIntoView({
-              behavior: "smooth",
-              block: "end"
-            });
-          });
-        }
-      };
-
-      window.visualViewport?.addEventListener('resize', handleViewportResize);
-
-      return () => {
-        window.visualViewport?.removeEventListener('resize', handleViewportResize);
-      };
+    // Only add listener if Visual Viewport API is supported (mobile browsers)
+    if (typeof window === 'undefined' || !('visualViewport' in window)) {
+      return;
     }
-  }, []);
+
+    const handleViewportResize = () => {
+      // Throttle to max once per 100ms to prevent excessive scroll operations
+      const now = Date.now();
+      if (now - lastScrollTimeRef.current < 100) {
+        return;
+      }
+      lastScrollTimeRef.current = now;
+
+      // Check if input area has focus (check container for better reliability)
+      const activeElement = document.activeElement;
+      const inputContainer = inputContainerRef.current;
+
+      if (inputContainer && activeElement && inputContainer.contains(activeElement)) {
+        // Use requestAnimationFrame to batch with browser's rendering cycle
+        requestAnimationFrame(() => {
+          scrollInputIntoView();
+        });
+      }
+    };
+
+    window.visualViewport?.addEventListener('resize', handleViewportResize);
+
+    // Cleanup
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportResize);
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    };
+  }, [scrollInputIntoView]);
 
   return (
     <>
