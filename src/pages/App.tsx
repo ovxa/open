@@ -102,9 +102,7 @@ export function App() {
   const [selectedChatIndex, setSelectedChatIndex] = useState(
     parseInt(localStorage.getItem(STORAGE_NAME_SELECTED) ?? "1")
   );
-  console.log("selectedChatIndex", selectedChatIndex);
   useEffect(() => {
-    console.log("set selected chat index", selectedChatIndex);
     localStorage.setItem(STORAGE_NAME_SELECTED, `${selectedChatIndex}`);
   }, [selectedChatIndex]);
 
@@ -163,7 +161,6 @@ export function App() {
   };
 
   const handleDEL = async () => {
-    console.log("remove item", `${STORAGE_NAME}-${selectedChatIndex}`);
     (await db).delete(STORAGE_NAME, selectedChatIndex);
     const newAllChatStoreIndexes = await (await db).getAllKeys(STORAGE_NAME);
 
@@ -174,7 +171,6 @@ export function App() {
 
     // find nex selected chat index
     const next = newAllChatStoreIndexes[newAllChatStoreIndexes.length - 1];
-    console.log("next is", next);
     setSelectedChatIndex(next as number);
     setAllChatStoreIndexes(newAllChatStoreIndexes);
 
@@ -204,7 +200,6 @@ export function App() {
       const mode = getDefaultParams("mode", "");
       const model = getDefaultParams("model", "");
       const max = getDefaultParams("max", 0);
-      console.log("max is", max, "chatStore.max is", chatStore.maxTokens);
       // only create new chatStore if the params in URL are NOT
       // equal to the current selected chatStore
       if (
@@ -215,7 +210,6 @@ export function App() {
         (model && model !== chatStore.model) ||
         (max !== 0 && max !== chatStore.maxTokens)
       ) {
-        console.log("create new chatStore because of params in URL");
         handleNewChatStoreWithOldOne(chatStore);
       }
       await db;
@@ -304,8 +298,6 @@ export function App() {
     localStorage.setItem("defaultRenderMD", `${defaultRenderMD}`);
     _setDefaultRenderMD(defaultRenderMD);
   };
-
-  console.log("[PERFORMANCE!] reading localStorage");
 
   return (
     <AppContext.Provider
@@ -497,7 +489,6 @@ const AppChatStoreProvider = ({
   };
   const [chatStore, _setChatStore] = useState(newChatStore({}));
   const setChatStore = async (chatStore: ChatStore) => {
-    console.log("recalculate postBeginIndex");
     const max = chatStore.maxTokens - chatStore.tokenMargin;
     let sum = 0;
     chatStore.postBeginIndex = chatStore.history.filter(
@@ -524,7 +515,6 @@ const AppChatStoreProvider = ({
       chatStore.totalTokens += msg.token;
     }
 
-    console.log("saved chat", selectedChatIndex, chatStore);
     (await ctx.db).put(STORAGE_NAME, chatStore, selectedChatIndex);
 
     // update total tokens

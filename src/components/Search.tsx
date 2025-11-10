@@ -82,37 +82,51 @@ export default function Search() {
               const resultKeys = await idb.getAllKeys("chatgpt-api-web");
 
               const result: ChatStoreSearchResult[] = [];
-              for (const key of resultKeys) {
+              const MAX_RESULTS = 100; // Limit results to improve performance
+
+              for (let i = 0; i < resultKeys.length; i++) {
+                const key = resultKeys[i];
+
                 // abort the operation if the signal is set
                 if (signal.aborted) {
                   return;
                 }
 
-                const now = Math.floor(
-                  (result.length / resultKeys.length) * 100
-                );
+                // Early exit if we have enough results
+                if (result.length >= MAX_RESULTS) {
+                  break;
+                }
+
+                const now = Math.floor((i / resultKeys.length) * 100);
                 if (now !== searchingNow) setSearchingNow(now);
 
                 const value: ChatStore = await idb.get("chatgpt-api-web", key);
 
                 let preview: string = "";
+                // Use for...of with early break for better performance
                 for (const msg of value.history) {
+                  if (preview) break; // Exit once we found a match
+
                   const contentType = typeof msg.content;
                   if (contentType === "string") {
-                    if (!msg.content.includes(query)) continue;
+                    const lowerContent = msg.content.toLowerCase();
+                    const index = lowerContent.indexOf(query);
+                    if (index === -1) continue;
 
-                    const beginIndex = msg.content.indexOf(query);
+                    const beginIndex = index;
                     preview = msg.content.slice(
                       Math.max(0, beginIndex - 100),
                       Math.min(msg.content.length, beginIndex + 239)
                     ) as string;
-                    break;
                   } else if (contentType === "object") {
                     const details = msg.content as MessageDetail[];
                     for (const detail of details) {
-                      if (detail.type !== "text") continue;
-                      if (!detail.text?.includes(query)) continue;
-                      const beginIndex = detail.text.indexOf(query);
+                      if (detail.type !== "text" || !detail.text) continue;
+                      const lowerText = detail.text.toLowerCase();
+                      const index = lowerText.indexOf(query);
+                      if (index === -1) continue;
+
+                      const beginIndex = index;
                       preview = detail.text.slice(
                         Math.max(0, beginIndex - 100),
                         Math.min(detail.text.length, beginIndex + 239)
@@ -140,7 +154,6 @@ export default function Search() {
                 }
                 return 0;
               });
-              console.log(result);
 
               setPageIndex(0);
               setSearchResult(result);
