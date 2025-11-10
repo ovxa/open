@@ -503,6 +503,44 @@ export default function ChatBOX() {
 
   const userInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController>(new AbortController());
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle mobile keyboard appearance
+  const handleInputFocus = () => {
+    // Delay to ensure keyboard has appeared
+    setTimeout(() => {
+      if (inputContainerRef.current) {
+        inputContainerRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end"
+        });
+      }
+    }, 300);
+  };
+
+  // Listen to Visual Viewport changes for better mobile keyboard handling
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'visualViewport' in window) {
+      const handleViewportResize = () => {
+        // When keyboard appears on mobile, viewport height changes
+        // Ensure input stays visible
+        if (document.activeElement === userInputRef.current && inputContainerRef.current) {
+          requestAnimationFrame(() => {
+            inputContainerRef.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "end"
+            });
+          });
+        }
+      };
+
+      window.visualViewport?.addEventListener('resize', handleViewportResize);
+
+      return () => {
+        window.visualViewport?.removeEventListener('resize', handleViewportResize);
+      };
+    }
+  }, []);
 
   return (
     <>
@@ -674,7 +712,7 @@ export default function ChatBOX() {
           </div>
         )}
       </div>
-      <div className="sticky bottom-0 w-full z-20 bg-background">
+      <div ref={inputContainerRef} className="sticky bottom-0 w-full z-20 bg-background">
         {generatingMessage && (
           <div className="flex items-center justify-between gap-2 p-2 m-2 rounded bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center gap-2">
@@ -709,6 +747,7 @@ export default function ChatBOX() {
             value={inputMsg}
             ref={userInputRef as any}
             placeholder={tr("Type your message here...", langCode)}
+            onFocus={handleInputFocus}
             onChange={(event: any) => {
               setInputMsg(event.target.value);
               autoHeight(event.target);
