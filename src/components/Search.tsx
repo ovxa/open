@@ -107,8 +107,7 @@ export default function Search() {
                 for (const msg of value.history) {
                   if (preview) break; // Exit once we found a match
 
-                  const contentType = typeof msg.content;
-                  if (contentType === "string") {
+                  if (typeof msg.content === "string") {
                     const lowerContent = msg.content.toLowerCase();
                     const index = lowerContent.indexOf(query);
                     if (index === -1) continue;
@@ -118,7 +117,7 @@ export default function Search() {
                       Math.max(0, beginIndex - 100),
                       Math.min(msg.content.length, beginIndex + 239)
                     ) as string;
-                  } else if (contentType === "object") {
+                  } else if (typeof msg.content === "object") {
                     const details = msg.content as MessageDetail[];
                     for (const detail of details) {
                       if (detail.type !== "text" || !detail.text) continue;
