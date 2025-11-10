@@ -1,4 +1,4 @@
-import { useContext, useRef } from "react";
+import { useContext, useRef, useMemo } from "react";
 import { useEffect, useState } from "react";
 import { langCodeContext, tr, Tr } from "@/translate";
 import { addTotalCost } from "@/utils/totalCost";
@@ -87,7 +87,6 @@ export default function ChatBOX() {
   const [follow, _setFollow] = useState(default_follow === "true");
 
   const setFollow = (follow: boolean) => {
-    console.log("set follow", follow);
     localStorage.setItem("follow", follow.toString());
     _setFollow(follow);
   };
@@ -98,9 +97,9 @@ export default function ChatBOX() {
       if (messagesEndRef.current === null) return;
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [showRetry, showGenerating, generatingMessage, chatStore]);
+  }, [showRetry, showGenerating, generatingMessage, chatStore, follow]);
 
-  const client = new ChatGPT(chatStore.apiKey);
+  const client = useMemo(() => new ChatGPT(chatStore.apiKey), [chatStore.apiKey]);
 
   const _completeWithStreamMode = async (
     response: Response,
@@ -137,7 +136,6 @@ export default function ChatBOX() {
             token: c?.delta?.content ?? "",
             logprob,
           });
-          console.log(c?.delta?.content, logprob);
         }
 
         if (c?.delta?.content) {
@@ -170,7 +168,6 @@ export default function ChatBOX() {
             );
 
             if (!tool) {
-              console.log("tool (by index) not found", tool_call.index);
               continue;
             }
 
@@ -217,8 +214,6 @@ export default function ChatBOX() {
 
     const content = allChunkMessage.join("");
     const reasoning_content = allReasoningContentChunk.join("");
-
-    console.log("save logprobs", logprobs);
 
     // manually copy status from client to chatStore
     chatStore.maxTokens = client.max_tokens;
@@ -389,7 +384,6 @@ export default function ChatBOX() {
       cs.completed_at = completed_at.toISOString();
 
       chatStore.history.push(cs);
-      console.log("new chatStore", cs);
 
       // manually copy status from client to chatStore
       chatStore.maxTokens = client.max_tokens;
@@ -406,7 +400,6 @@ export default function ChatBOX() {
         .slice(-2, -1)[0];
       if (userMessage) {
         userMessage.token = usage.prompt_tokens - aboveTokens;
-        console.log("estimate user message token", userMessage.token);
       }
       // [TODO]
       // calculate cost
@@ -438,14 +431,12 @@ export default function ChatBOX() {
 
         addTotalCost(cost);
         chatStore.cost += cost;
-        console.log("cost", cost);
       }
 
       setShowRetry(false);
       setChatStore({ ...chatStore });
     } catch (error: any) {
       if (error.name === "AbortError") {
-        console.log("abort complete");
         return;
       }
       setShowRetry(true);
@@ -464,7 +455,6 @@ export default function ChatBOX() {
 
     const inputMsg = msg.trim();
     if (!inputMsg && images.length === 0) {
-      console.log("empty message");
       return;
     }
 

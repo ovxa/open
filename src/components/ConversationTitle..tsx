@@ -22,7 +22,6 @@ const ConversationTitle = ({ chatStoreIndex }: { chatStoreIndex: number }) => {
     }
 
     if (typeof content === "string") {
-      console.log(content);
       setTitle(content.substring(0, 39));
     }
   };
@@ -33,7 +32,7 @@ const ConversationTitle = ({ chatStoreIndex }: { chatStoreIndex: number }) => {
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [chatStoreIndex]);
 
   return (
     <span
@@ -62,7 +61,8 @@ const CachedConversationTitle = memo(
     return <ConversationTitle chatStoreIndex={chatStoreIndex} />;
   },
   (prevProps, nextProps) => {
-    return nextProps.selectedChatStoreIndex === nextProps.chatStoreIndex;
+    return prevProps.chatStoreIndex === nextProps.chatStoreIndex &&
+           prevProps.selectedChatStoreIndex === nextProps.selectedChatStoreIndex;
   }
 );
 
